@@ -1,3 +1,69 @@
+# coucap: LLaVA for Fashion Product Captioning
+
+**Goal**: <br>Generation of precise yet upbeat product descriptions from images. <br>
+Fork from haotian-liu/LLaVA, All credits for this go to the original authors (below).<br>
+Low-rank adaptation fine-tuning of multi-modal Large Language Model LLaVA. Product-images scraped from web using own scraper, aimed at 2M+ samples.<br><br>
+Training and inference on limited hardware (3090/24G).
+
+
+This repo contains the logs during development. Find the train runs at: <br>
+[[wandb-training-page](https://wandb.ai/yeswegan/LLaVA-LoRA?workspace=user-yeswegan)]
+
+
+Model version | Base Model| Dataset size| Train method
+:------------: |:-----------: | :---------:| :---------:
+v1 | llava-v1.5-7b | 5k | LoRA
+v2 | llava-v1.5-7b | 14k | LoRA
+v3 | llava-v1.5-7b | 70k | LoRA
+v4 | llava-v1.5-7b | 100k | LoRA
+v4 | llava-v1.5-13b? | ? | QLoRA
+
+
+### 20.01.24
+v4: 
+
+### *v3* - 18.01.2024
+
+- train run on newly filtered 70k dataset (train-time 13h) shows greatly improved generalization compared to v2. <br>
+- Inference without product names seems to generate more accurate, diverse results.
+- with max_length 2048, observed frequent allocator cache flushes. Reducing to 1024 caused some samples to overflow max_length
+
+### *dataset quality improvements* - 16.01.24
+
+- next LoRA training will run on 70k samples, greatly improved description filtering in dataset. 
+Added filters for many size-, washing-, care-, design-, material-, model-related information.
+- Furthermore changed up image map to include the store-first image instead of the glob-first.
+- Set-up backside-related snippet filtering to maybe enable backside descriptions in next step.
+
+
+### *v2* -  15.01.24
+
+- LoRA training, 1 epoch on 14k samples, still reveals some amount of overfitting: 
+many elements of the description are repeated, but this time not perfectly.
+also some genuinely new descriptions come in.
+- some categories are mapped wrong.
+- some captions are too short.
+- still too many useless snippets in dataset like please note: colors may differ, fabric, and model sizes.
+**re-iterate over caption filtering process?**
+- or download FACAD https://drive.google.com/drive/folders/1cgdHt8AlBukmPhuSzUTPszYPXAYmg6gy
+- How to solve the image-picking problem. Maybe use image-number 1 from JSON?
+
+
+
+### *v1*  -  14.01.24
+- LoRA training (5 epochs on 5k samples) shows heavy overfitting: description was learnt by heart.
+- next train with only 1 epoch.
+- improve caption filtering.
+- Multi-image input is supported technically, but apparently results are poor. 
+Maybe this means I have to split the captioning tasks into portions about front, back and side. 
+
+
+
+
+
+
+
+
 # 🌋 LLaVA: Large Language and Vision Assistant
 
 *Visual instruction tuning towards large language and vision models with GPT-4 level capabilities.*
