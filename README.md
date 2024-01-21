@@ -10,17 +10,19 @@ This repo contains the logs during development. Find the train runs at: <br>
 [[wandb-training-page](https://wandb.ai/yeswegan/LLaVA-LoRA?workspace=user-yeswegan)]
 
 
-Model version | Base Model| Dataset size| Train method
-:------------: |:-----------: | :---------:| :---------:
-v1 | llava-v1.5-7b | 5k | LoRA
-v2 | llava-v1.5-7b | 14k | LoRA
-v3 | llava-v1.5-7b | 70k | LoRA
-v4 | llava-v1.5-7b | 100k | LoRA
-v4 | llava-v1.5-13b? | ? | QLoRA
+Model version | Base Model| Dataset size | Train method | global batch size
+:-------: |:-----------: | :---------:| :---------:| :---------:
+v1 | llava-v1.5-7b | 5k | LoRA | 64
+v2 | llava-v1.5-7b | 14k | LoRA | 64
+v3 | llava-v1.5-7b | 70k | LoRA | 64
+v4 | llava-v1.5-7b | 125k | LoRA | 128
+v5 | llava-v1.5-13b ? | ? | QLoRA | ?
 
 
-### 20.01.24
-v4: 
+### *v4* - 20.01.24
+- improved regex filtering, added new fragmentation rules
+- dataset increased to 125k samples
+- changed global batch size to 128 (was 64)
 
 ### *v3* - 18.01.2024
 
