@@ -18,6 +18,12 @@ v3 | llava-v1.5-7b | 70k | LoRA | 64
 v4 | llava-v1.5-7b | 125k | LoRA | 128
 v5 | llava-v1.5-13b ? | ? | QLoRA | ?
 
+### *v4* - 20.01.24
+- finished after 22.6 h of training.
+- BLEU-1 score 0.19 on 10 samples, 3 candidate generations each, top-p 0.7, temp 0.2, max 512 tokens.
+- had to increase swap file size to avoid running out of RAM during step-n-saves. Stores all of the optimizers, requiring 20G each.
+- build a uvicorn server applet that wraps around my dataset. API to do the prompting of the model (image-path, convo.)
+- I need an automated evaluation. probably best to have some kind of BLEU with weighted words. Would require a mapping of keywords/features that mean the same thing.
 
 ### *v4* - 20.01.24
 - improved regex filtering, added new fragmentation rules
