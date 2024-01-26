@@ -1,88 +1,31 @@
-import torch
-
-from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN
-from llava.conversation import conv_templates, SeparatorStyle
-from llava.model.builder import load_pretrained_model
-from llava.utils import disable_torch_init
-from llava.mm_utils import tokenizer_image_token, KeywordsStoppingCriteria
-from transformers.generation.streamers import TextIteratorStreamer
-
-from PIL import Image
+import json
+import os
+import random
+import subprocess
+import time
+from io import BytesIO
+from pathlib import Path
+from pprint import pprint
+from threading import Thread
+from typing import Union
 
 import requests
-from io import BytesIO
+import torch
+from cog import BasePredictor, ConcatenateIterator, Input, Path
+from PIL import Image
+from transformers.generation.streamers import TextIteratorStreamer
 
-from cog import BasePredictor, Input, Path, ConcatenateIterator
-import time
-import subprocess
-from threading import Thread
+from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
+from llava.conversation import SeparatorStyle, conv_templates
+from llava.mm_utils import KeywordsStoppingCriteria, tokenizer_image_token
+from llava.model.builder import load_pretrained_model
+from llava.utils import disable_torch_init
 
-import os
 os.environ["HUGGINGFACE_HUB_CACHE"] = os.getcwd() + "/weights"
 
-# url for the weights mirror
-REPLICATE_WEIGHTS_URL = "https://weights.replicate.delivery/default"
-# files to download from the weights mirrors
-weights = [
-    {
-        "dest": "liuhaotian/llava-v1.5-13b",
-        # git commit hash from huggingface
-        "src": "llava-v1.5-13b/006818fc465ebda4c003c0998674d9141d8d95f8",
-        "files": [
-            "config.json",
-            "generation_config.json",
-            "pytorch_model-00001-of-00003.bin",
-            "pytorch_model-00002-of-00003.bin",
-            "pytorch_model-00003-of-00003.bin",
-            "pytorch_model.bin.index.json",
-            "special_tokens_map.json",
-            "tokenizer.model",
-            "tokenizer_config.json",
-        ]
-    },
-    {
-        "dest": "openai/clip-vit-large-patch14-336",
-        "src": "clip-vit-large-patch14-336/ce19dc912ca5cd21c8a653c79e251e808ccabcd1",
-        "files": [
-            "config.json",
-            "preprocessor_config.json",
-            "pytorch_model.bin"
-        ],
-    }
-]
-
-def download_json(url: str, dest: Path):
-    res = requests.get(url, allow_redirects=True)
-    if res.status_code == 200 and res.content:
-        with dest.open("wb") as f:
-            f.write(res.content)
-    else:
-        print(f"Failed to download {url}. Status code: {res.status_code}")
-
-def download_weights(baseurl: str, basedest: str, files: list[str]):
-    basedest = Path(basedest)
-    start = time.time()
-    print("downloading to: ", basedest)
-    basedest.mkdir(parents=True, exist_ok=True)
-    for f in files:
-        dest = basedest / f
-        url = os.path.join(REPLICATE_WEIGHTS_URL, baseurl, f)
-        if not dest.exists():
-            print("downloading url: ", url)
-            if dest.suffix == ".json":
-                download_json(url, dest)
-            else:
-                subprocess.check_call(["pget", url, str(dest)], close_fds=False)
-    print("downloading took: ", time.time() - start)
-
 class Predictor(BasePredictor):
-    def setup(self) -> None:
-        """Load the model into memory to make running multiple predictions efficient"""
-        for weight in weights:
-            download_weights(weight["src"], weight["dest"], weight["files"])
-        disable_torch_init()
-    
-        self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model("liuhaotian/llava-v1.5-13b", model_name="llava-v1.5-13b", model_base=None, load_8bit=False, load_4bit=False)
+    def setup(self, model_path, model_base, model_name) -> None:
+        self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(model_path=model_path, model_base=model_base, model_name=model_name, load_8bit=False, load_4bit=False)
 
     def predict(
         self,
@@ -155,3 +98,57 @@ def load_image(image_file):
         image = Image.open(image_file).convert('RGB')
     return image
 
+
+
+class DatasetInference:
+    def __init__(self, json_filepath: Union[str, Path], db_path: str) -> None:
+        self.json_filepath = json_filepath
+        self.ds = self.load_json_file()
+        self.db_path = db_path
+        print(f"Setup with db_path: {self.db_path}")
+
+    def load_json_file(self):
+        try:
+            return json.load(open(self.json_filepath, "r"))
+        except StopIteration:
+            raise FileNotFoundError(
+                f"JSON-file not found: {self.json_filepath}. Exiting."
+            )
+
+    def load_and_pprint_sample(self, full=False, print=True):
+        item = random.randint(0, len(self.ds))
+        data = self.ds[item]
+        if print:
+            if full:
+                print("_______________________________________________________")
+                print(f'{data["debug_info"]["title"]}, from: {data["debug_info"]["vendor"]}')
+                print(f'Inferred type: {data["debug_info"]["type_inference"]["type"]}')
+                print(f'Matching key: {data["debug_info"]["type_inference"]["match_key"]}')
+                print(
+                    f'In attribute value: {data["debug_info"]["type_inference"]["matched_attr"]}'
+                )
+            print("_______________________________________________________")
+            print("Conversation:")
+            print(data["conversations"][0]["value"])
+            print("")
+            print(data["conversations"][1]["value"])
+            print("_______________________________________________________")
+            if full:
+                print("Dumped snippets:")
+                pprint(data["debug_info"]["dumped_snippets"])
+                print("_______________________________________________________")
+                print("Here they might be talking about the backside")
+                pprint(data["debug_info"]["back_descr"])
+            print(os.path.join(self.db_path, data["image"]))
+        imagepath = os.path.join(self.db_path, data["image"])
+        item_type = data["debug_info"]["type_inference"]["type"]
+        convo = [data["conversations"][0]["value"],data["conversations"][1]["value"]]
+        return Path(imagepath), item_type, convo
+
+
+    def load_sample(self, index):
+        data = self.ds[index]
+        imagepath = os.path.join(self.db_path, data["image"])
+        item_type = data["debug_info"]["type_inference"]["type"]
+        convo = [data["conversations"][0]["value"],data["conversations"][1]["value"]]
+        return Path(imagepath), item_type, convo

@@ -147,8 +147,17 @@ class LlavaMetaForCausalLM(ABC):
         new_input_embeds = []
         new_labels = []
         cur_image_idx = 0
+        if hasattr(image_features, "shape"):
+            # print(f"Image features shape: {image_features.shape}")
+            pass
+        else:
+            # print(f"Image features has no shape. It is of type: {type(image_features)}")
+            pass
+            image_features = [image_features]
         for batch_idx, cur_input_ids in enumerate(input_ids):
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
+            # print(f"Num images is {num_images}")    # TODO write issue?
+            num_images = 1
             if num_images == 0:
                 cur_image_features = image_features[cur_image_idx]
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)

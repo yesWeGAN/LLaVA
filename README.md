@@ -10,20 +10,59 @@ This repo contains the logs during development. Find the train runs at: <br>
 [[wandb-training-page](https://wandb.ai/yeswegan/LLaVA-LoRA?workspace=user-yeswegan)]
 
 
-Model version | Base Model| Dataset size | Train method | global batch size
-:-------: |:-----------: | :---------:| :---------:| :---------:
-v1 | llava-v1.5-7b | 5k | LoRA | 64
-v2 | llava-v1.5-7b | 14k | LoRA | 64
-v3 | llava-v1.5-7b | 70k | LoRA | 64
-v4 | llava-v1.5-7b | 125k | LoRA | 128
-v5 | llava-v1.5-13b ? | ? | QLoRA | ?
+version | LLaVA Base| Dataset size | Train method | global batch size | BLEU score
+:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
+v1 | v1.5-7b | 5k | LoRA | 64| N/A
+v2 | v1.5-7b | 14k | LoRA | 64| N/A
+v3 | v1.5-7b | 70k | LoRA | 64| N/A
+v4 | v1.5-7b | 125k | LoRA | 128| 0.19
+v5 | v1.5-13b ? | ? | QLoRA | ?| ?
+
+<br>
+
+### Evaluation
+
+Crafted a custom BLEU-1-score, **fashion-BLEU1**, ignoring filler words like (with, are, is, and, you, ..). <br>Very conservative metric, to capture performance on naming item properties (cut, length, details, appeal). <br><br>
+Score is calculated on the whole corpus of all predictions in a category per-sample and averaged (**?-BLEU-1-mean**). <br><br>
+**Note**: training dataset for v4 contains low diversity for certain categories (footwear, swimwear, ..), yielding the same, unrelated caption (BLEU-score 0) for many items in the validation set (not sampled from the same population as training). To capture this, BLEU-1 is also calculated per-sample and averaged. (**BLEU-1-mean**)
+
+
+
+Category| native-BLEU-1 | fashion-BLEU-1 | native-BLEU-1-mean | fashion-BLEU-1-mean | samples for validation
+:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
+dress | 0.268 | 0.161 | 0.081 | 0.023 | 98
+top | 0.387 | 0.283 | 0.079 | 0.037 | 98
+pants | 0.353 | 0.285 | 0.104 | 0.079 | 98
+skirt | 0.352 | 0.231 | 0.098 | 0.037 | 98
+accessoire | 0.327 | 0.178 | 0.072 | 0.017 | 98
+one-piece | 0.336 | 0.22 | 0.087 | 0.026 | 98
+lingerie | 0.27 | 0.17 | 0.087 | 0.029 | 56
+hat | 0.295 | 0.175 | 0.07 | 0.018 | 98
+swimwear | 0.146 | 0.041 | 0.081 | 0.02 | 11
+footwear | 0.26 | 0.123 | 0.078 | 0.015 | 98
+item | 0.3 | 0.157 | 0.077 | 0.017 | 34
+sunglasses | 0.177 | 0.05 | 0.067 | 0.013 | 29
+underwear | 0 | 0 | nan | nan | 0
+
+### *v5* - tbd
+- wrap around predict.py to predict samples - DONE
+- merge base model with LoRA to decrease model setup time - DONE
+- adapt BLEU score to ignore filler-words (with, are, is, and, you, ..) - DONE
+- adjust filtering: loop over whole dataset, remove n=1+? words
+- calculate adapted BLEU score for each category - DONE
+- use MongoDB to store dataset (might take away all the filepath-insanity)
+- use segmentations to extract cropped image version on ROI - DONE
+
 
 ### *v4* - 20.01.24
 - finished after 22.6 h of training.
 - BLEU-1 score 0.19 on 10 samples, 3 candidate generations each, top-p 0.7, temp 0.2, max 512 tokens.
 - had to increase swap file size to avoid running out of RAM during step-n-saves. Stores all of the optimizers, requiring 20G each.
-- build a uvicorn server applet that wraps around my dataset. API to do the prompting of the model (image-path, convo.)
-- I need an automated evaluation. probably best to have some kind of BLEU with weighted words. Would require a mapping of keywords/features that mean the same thing.
+- build a uvicorn server applet that wraps around my dataset. API to do the prompting of the model (image-path, convo.)<br><br>
+
+**Next steps:**
+- automated evaluation: probably best to have some kind of BLEU with weighted words. Would require a mapping of keywords/features that mean the same thing.
+- def need to segment images and crop to the described item. Fine-grained details otherwise not perceivable in 336px vision tower.
 
 ### *v4* - 20.01.24
 - improved regex filtering, added new fragmentation rules
