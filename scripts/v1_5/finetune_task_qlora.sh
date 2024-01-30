@@ -1,8 +1,9 @@
 #!/bin/bash 
 
 deepspeed llava/train/train_mem.py \
-    --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5 \
-    --deepspeed ./scripts/zero3_offload_MQ.json \
+    --deepspeed ./scripts/zero2.json \
+    --lora_enable True \
+    --bits 4 \
     --model_name_or_path liuhaotian/llava-v1.5-7b \
     --version v1 \
     --data_path /home/frank/ssd/datasets/cropshop/cropshop_v2_60k_train.json \
@@ -12,17 +13,18 @@ deepspeed llava/train/train_mem.py \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
+    --mm_projector_lr 2e-5 \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
     --output_dir ./checkpoints/llava-v1.5-7b-task-lora \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 32 \
+    --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 250 \
+    --save_steps 300 \
     --save_total_limit 2 \
     --learning_rate 2e-4 \
     --weight_decay 0. \

@@ -10,64 +10,61 @@ This repo contains the logs during development. Find the train runs at: <br>
 [[wandb-training-page](https://wandb.ai/yeswegan/LLaVA-LoRA?workspace=user-yeswegan)]
 
 
-version | LLaVA Base| Dataset size | Train method | global batch size | BLEU score
+version | LLaVA Base| Dataset size | Train method | global batch size | BLEU-1 score
 :-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
 v1 | v1.5-7b | 5k | LoRA | 64| N/A
 v2 | v1.5-7b | 14k | LoRA | 64| N/A
 v3 | v1.5-7b | 70k | LoRA | 64| N/A
-v4 | v1.5-7b | 125k | LoRA | 128| 0.19
+v4 | v1.5-7b | 125k | LoRA | 128| 0.09
+v4.5 | v1.5-7b | 32k crop | LoRA | 128| 0.08
+v4.5 | v1.5-7b | 60k crop | 4bit qLoRA | 128| 0.13
 v5 | v1.5-13b ? | ? | QLoRA | ?| ?
 
 <br>
 
 ### Evaluation
 
-Crafted a custom BLEU-1-score, **fashion-BLEU1**, ignoring filler words like (with, are, is, and, you, ..). <br>Very conservative metric, to capture performance on naming item properties (cut, length, details, appeal). <br><br>
-Score is calculated on the whole corpus of all predictions in a category per-sample and averaged (**?-BLEU-1-mean**). <br><br>
-**Note**: training dataset for v4 contains low diversity for certain categories (footwear, swimwear, ..), yielding the same, unrelated caption (BLEU-score 0) for many items in the validation set (not sampled from the same population as training). To capture this, BLEU-1 is also calculated per-sample and averaged. (**BLEU-1-mean**)
+Crafted a custom BLEU-1-score, **fashion-BLEU1**, ignoring filler words like (with, are, is, and, you, ..). <br>Very conservative metric, to capture performance on naming item properties (cut, length, details, appeal). BLEU-1 is not an ideal metric, but quick.<br><br>
+Score is calculated as the mean BLEU-1 per sample, as each description needs to fit the specific item. Further evaluations/details see [Eval Details](###Detailed-Evaluation-Results). <br><br>
+Some item-types / classes (accessoire, lingerie, sunglasses, underwear) are underrepresented and ignored in the following table (Top-5 results). Increasing sample-size in validation beyond 100 per class does not significantly influence performance.
+
+Model| native-BLEU-1 | fashion-BLEU-1 | samples for validation
+:-------: |:-----------: | :---------:| :---------:
+[v4.6](###v4.6) | 0.13 | 0.10 | 768 
+[v4.5](###v4.5) | 0.08 | 0.03 | 354
+[v4](###v4) | 0.09 | 0.04 | 490
 
 
+## Model Version Changelog
 
-Category| native-BLEU-1 | fashion-BLEU-1 | native-BLEU-1-mean | fashion-BLEU-1-mean | samples for validation
-:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
-dress | 0.268 | 0.161 | 0.081 | 0.023 | 98
-top | 0.387 | 0.283 | 0.079 | 0.037 | 98
-pants | 0.353 | 0.285 | 0.104 | 0.079 | 98
-skirt | 0.352 | 0.231 | 0.098 | 0.037 | 98
-accessoire | 0.327 | 0.178 | 0.072 | 0.017 | 98
-one-piece | 0.336 | 0.22 | 0.087 | 0.026 | 98
-lingerie | 0.27 | 0.17 | 0.087 | 0.029 | 56
-hat | 0.295 | 0.175 | 0.07 | 0.018 | 98
-swimwear | 0.146 | 0.041 | 0.081 | 0.02 | 11
-footwear | 0.26 | 0.123 | 0.078 | 0.015 | 98
-item | 0.3 | 0.157 | 0.077 | 0.017 | 34
-sunglasses | 0.177 | 0.05 | 0.067 | 0.013 | 29
-underwear | 0 | 0 | nan | nan | 0
+### *v4.6*
+- **60k samples of cropped images, qLoRA-train (4-bit)**
+- slightly quicker training by fitting optimizer onto GPU memory (ZERO3-offload not compatible with --bits 4)
+- step batch size ect. same as with regular LoRA, maybe the official qlora script offers more features
+- overall performance improved significantly!
 
-### *v5* - tbd
-- wrap around predict.py to predict samples - DONE
-- merge base model with LoRA to decrease model setup time - DONE
-- adapt BLEU score to ignore filler-words (with, are, is, and, you, ..) - DONE
-- adjust filtering: loop over whole dataset, remove n=1+? words
-- calculate adapted BLEU score for each category - DONE
-- use MongoDB to store dataset (might take away all the filepath-insanity)
-- use segmentations to extract cropped image version on ROI - DONE
-
+### *v4.5*
+- **32k samples of cropped images, LoRA-train (no qlora)**
+- improved dataset regex filters
+- wrap around predict.py to predict samples
+- merge base model with LoRA to decrease model setup time
+- adapt BLEU score to ignore filler-words (with, are, is, and, you, ..)
+- calculate adapted BLEU score for each category
+- use segmentations to extract cropped image version on ROI
 
 ### *v4* - 20.01.24
+**125k samples of full images, LoRA-train (no qlora), improved dataset quality**
 - finished after 22.6 h of training.
 - BLEU-1 score 0.19 on 10 samples, 3 candidate generations each, top-p 0.7, temp 0.2, max 512 tokens.
 - had to increase swap file size to avoid running out of RAM during step-n-saves. Stores all of the optimizers, requiring 20G each.
-- build a uvicorn server applet that wraps around my dataset. API to do the prompting of the model (image-path, convo.)<br><br>
-
-**Next steps:**
-- automated evaluation: probably best to have some kind of BLEU with weighted words. Would require a mapping of keywords/features that mean the same thing.
-- def need to segment images and crop to the described item. Fine-grained details otherwise not perceivable in 336px vision tower.
-
-### *v4* - 20.01.24
 - improved regex filtering, added new fragmentation rules
 - dataset increased to 125k samples
 - changed global batch size to 128 (was 64)
+
+- #### **Next steps:**
+- automated evaluation: probably best to have some kind of BLEU with weighted words. Would require a mapping of keywords/features that mean the same thing.
+- def need to segment images and crop to the described item. Fine-grained details otherwise not perceivable in 336px vision tower.
+
 
 ### *v3* - 18.01.2024
 
@@ -108,7 +105,63 @@ Maybe this means I have to split the captioning tasks into portions about front,
 
 
 
+### Detailed Evaluation Results
 
+Crafted a custom BLEU-1-score, **fashion-BLEU1**, ignoring filler words like (with, are, is, and, you, ..). <br>Very conservative metric, to capture performance on naming item properties (cut, length, details, appeal). <br><br>
+Score is calculated once on the whole corpus of all predictions in a category, and as a mean per-sample (**?-BLEU-1-mean**), details see below. <br><br>
+
+
+
+**v4.6** - 60k cropped product images, 4-bit qLoRA training, train/val sampling (0.03), top_p 0.7, temp 0.3
+Category| native-BLEU-1 | fashion-BLEU-1 | native-BLEU-1-mean | fashion-BLEU-1-mean | samples for validation
+:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
+dress | 0.44 | 0.445 | 0.137 | 0.109 | 200
+top | 0.467 | 0.383 | 0.125 | 0.086 | 200
+pants | 0.519 | 0.45 | 0.107 | 0.066 | 200
+skirt | 0.435 | 0.364 | 0.155 | 0.117 | 68
+accessoire | 0.399 | 0.27 | 0.112 | 0.066 | 48
+one-piece | 0.376 | 0.401 | 0.133 | 0.098 | 100
+lingerie | 0.401 | 0.353 | 0.182 | 0.118 | 26
+hat | 0.393 | 0.271 | 0.134 | 0.096 | 63
+swimwear | 0.322 | 0.235 | 0.084 | 0.064 | 87
+footwear | 0.254 | 0.286 | 0.094 | 0.06 | 38
+sunglasses | 0.115 | 0.091 | 0.131 | 0.103 | 3
+underwear | 0.374 | 0.306 | 0.196 | 0.129 | 11
+
+
+
+**v4.5** - 32k cropped product images, train/val sampling (0.03), LoRA, top_p 0.7, temp 0.2
+Category| native-BLEU-1 | fashion-BLEU-1 | native-BLEU-1-mean | fashion-BLEU-1-mean | samples for validation
+:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
+dress | 0.326 | 0.217 | 0.07 | 0.022 | 98
+top | 0.398 | 0.312 | 0.105 | 0.071 | 98
+pants | 0.376 | 0.288 | 0.069 | 0.025 | 98
+skirt | 0.292 | 0.158 | 0.074 | 0.028 | 18
+accessoire | 0.246 | 0.122 | 0.069 | 0.014 | 14
+one-piece | 0.334 | 0.215 | 0.078 | 0.015 | 33
+lingerie | 0.223 | 0.069 | 0.107 | 0.031 | 5
+hat | 0.28 | 0.144 | 0.064 | 0.015 | 19
+swimwear | 0.057 | 0.029 | 0.05 | 0.026 | 42
+footwear | 0.277 | 0.095 | 0.056 | 0.006 | 11
+sunglasses | 0 | 0 | nan | nan | 0
+underwear | 0.153 | 0.013 | 0.053 | 0.003 | 3
+
+**v4**  - 125 k non-cropped images, no train/val sampling (low validation diversity!), LoRA, top_p 0.7, temp 0.2
+Category| native-BLEU-1 | fashion-BLEU-1 | native-BLEU-1-mean | fashion-BLEU-1-mean | samples for validation
+:-------: |:-----------: | :---------:| :---------:| :---------:| :---------:
+dress | 0.268 | 0.161 | 0.081 | 0.023 | 98
+top | 0.387 | 0.283 | 0.079 | 0.037 | 98
+pants | 0.353 | 0.285 | 0.104 | 0.079 | 98
+skirt | 0.352 | 0.231 | 0.098 | 0.037 | 98
+accessoire | 0.327 | 0.178 | 0.072 | 0.017 | 98
+one-piece | 0.336 | 0.22 | 0.087 | 0.026 | 98
+lingerie | 0.27 | 0.17 | 0.087 | 0.029 | 56
+hat | 0.295 | 0.175 | 0.07 | 0.018 | 98
+swimwear | 0.146 | 0.041 | 0.081 | 0.02 | 11
+footwear | 0.26 | 0.123 | 0.078 | 0.015 | 98
+item | 0.3 | 0.157 | 0.077 | 0.017 | 34
+sunglasses | 0.177 | 0.05 | 0.067 | 0.013 | 29
+underwear | 0 | 0 | nan | nan | 0
 
 
 # 🌋 LLaVA: Large Language and Vision Assistant
