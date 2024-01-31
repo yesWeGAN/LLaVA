@@ -17,8 +17,9 @@ v2 | v1.5-7b | 14k | LoRA | 64| N/A
 v3 | v1.5-7b | 70k | LoRA | 64| N/A
 v4 | v1.5-7b | 125k | LoRA | 128| 0.09
 v4.5 | v1.5-7b | 32k crop | LoRA | 128| 0.08
-v4.5 | v1.5-7b | 60k crop | 4bit qLoRA | 128| 0.13
-v5 | v1.5-13b ? | ? | QLoRA | ?| ?
+v4.6 | v1.5-7b | 60k crop | 4-bit qLoRA | 128| 0.13
+v4.7 | v1.5-7b | 165k crop | 4-bit qLoRA | 128| tbd
+v5 | 13b ? | ? | qLoRA | ?| ?
 
 <br>
 
@@ -37,11 +38,45 @@ Model| native-BLEU-1 | fashion-BLEU-1 | samples for validation
 
 ## Model Version Changelog
 
+### *v5* - Roadmap to v5, tbds
+- goals:
+    - ready to be published (servable)
+    - reduced hallucinations (item/vendor names, back descriptions)
+    - type inference
+    - maybe adding keywords into prompt
+    - gender parity in training data, 250k train samples
+- necessary changes in data
+    - filter vendor names from descriptions
+    - potentially filter item names (replace with "this ITEMCLASS")
+    - improve / finegrain type inference, add more classes
+    - image-classification: front, back, side, detail
+    - image-classification: unisex, kids, women,  men
+    - 
+    - optional: 
+        - dataset viewer in gradio to catch wrong cropping, labels, etc! 
+        - MongoDB
+        - store description as prompt
+        - assemble RLHF dataset with preferred options
+- necessary changes in model / pipeline
+    - inference pipeline with type inference and cropping before forward()
+    - multi-image prompt or image tiling for back
+    - deployment options in huggingface
+    - optional:
+        - batched inference for faster evaluation / serving
+
+
+### *v4.7*
+- **165k samples of cropped images, 4-bit qLORA (resume training from v4.6)**
+- why does loss decrease slower with qlora? (note qlora train run in 3 installments, slightly overlapping due to poor checkpoint choice)
+
+<img src="images/lora_vs_qlora.png" width="70%">
+
+
 ### *v4.6*
 - **60k samples of cropped images, qLoRA-train (4-bit)**
 - slightly quicker training by fitting optimizer onto GPU memory (ZERO3-offload not compatible with --bits 4)
 - step batch size ect. same as with regular LoRA, maybe the official qlora script offers more features
-- overall performance improved significantly!
+- overall performance improved significantly in terms of BLEU, even though train loss is higher
 
 ### *v4.5*
 - **32k samples of cropped images, LoRA-train (no qlora)**
@@ -90,6 +125,7 @@ also some genuinely new descriptions come in.
 - still too many useless snippets in dataset like please note: colors may differ, fabric, and model sizes.
 **re-iterate over caption filtering process?**
 - or download FACAD https://drive.google.com/drive/folders/1cgdHt8AlBukmPhuSzUTPszYPXAYmg6gy
+    note 31.01.24: FACAD is useless, 256x256 images and no mapping image - caption. also no commercial use.
 - How to solve the image-picking problem. Maybe use image-number 1 from JSON?
 
 

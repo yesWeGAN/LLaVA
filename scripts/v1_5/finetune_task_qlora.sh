@@ -6,7 +6,7 @@ deepspeed llava/train/train_mem.py \
     --bits 4 \
     --model_name_or_path liuhaotian/llava-v1.5-7b \
     --version v1 \
-    --data_path /home/frank/ssd/datasets/cropshop/cropshop_v2_60k_train.json \
+    --data_path /home/frank/ssd/datasets/cropshop/cropshop_v4_105k_diff_train.json \
     --image_folder  /home/frank/ssd/datasets/cropshop/ \
     --vision_tower openai/clip-vit-large-patch14-336 \
     --mm_projector_type mlp2x_gelu \
@@ -37,3 +37,9 @@ deepspeed llava/train/train_mem.py \
     --dataloader_num_workers 4 \
     --lazy_preprocess True \
     --report_to wandb
+
+
+#    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
+#        trainer.train(resume_from_checkpoint=True)
+#    else:
+#       trainer.train()
